@@ -153,7 +153,14 @@ class DiscountCouponsType extends eZWorkflowEventType
 	}
 
 	private static function getProductsDiscountAmount( eZOrder $order, eZContentObject $coupon ) {
-		$discountableAmount = 10;
+		$products = $order->attribute( 'product_items' );
+		$products = self::filterProductsByAllowedProducts( $products, $coupon );
+		$products = self::filterSaleProducts( $products, $coupon );
+
+		$discountableAmount = 0;
+		foreach( $products as $product ) {
+			$discountableAmount += $product['total_price_ex_vat'];
+		}
 
 		$dataMap  = $coupon->attribute( 'data_map' );
 		$discount = $dataMap['discount_value']->attribute( 'content' );
@@ -166,6 +173,120 @@ class DiscountCouponsType extends eZWorkflowEventType
 		}
 		$discountableAmount = round( $discountableAmount, 2 );
 		return $discountableAmount;
+	}
+
+	private static function filterProductsByAllowedProducts( array $products, eZContentObject $coupon ) {
+		$dataMap           = $coupon->attribute( 'data_map' );
+		$allowedProducts   = $dataMap['products_and_categories']->attribute( 'content' );
+		$allowedProducts   = $allowedProducts['relation_list'];
+		$ageCategories     = eZINI::instance( 'mk.ini' )->variableArray( 'SizeSettings', 'CategorySizes' );
+		$allowedCategories = array();
+		foreach( $allowedProducts as $allowedProduct ) {
+			if( $allowedProduct['contentclass_identifier'] === 'product_category' ) {
+				$allowedCategories[] = eZContentObject::fetch( $allowedProduct['contentobject_id'] );
+			}
+		}
+
+		$allowedSizes = array();
+		foreach( $allowedCategories as $category ) {
+			$dataMap    = $category->attribute( 'data_map' );
+			$identifier = $dataMap['identifier']->attribute( 'content' );
+			if( isset( $ageCategories[ $identifier ] ) ) {
+				$allowedSizes = array_merge( $allowedSizes, $ageCategories[ $identifier ] );
+			}
+		}
+		$allowedSizes = array_unique( $allowedSizes );
+
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$productSize = null;
+			$options     = $product['item_object']->attribute( 'option_list' );
+			if( count( $options ) === 0 ) {
+				continue;
+			}
+			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
+			if( count( $tmp ) > 2 ) {
+				$productSize = $tmp[ count( $tmp ) - 2 ];
+			}
+
+			$isDiscountable = true;
+			$object = $product['item_object']->attribute( 'contentobject' );
+			$SKU    = $options[0]->attribute( 'value' );
+
+			if( count( $allowedProducts ) > 0 ) {
+				$isDiscountable = false;
+
+				$nodes = $object->attribute( 'assigned_nodes' );
+				foreach( $nodes as $node ) {
+					$pathNodeIDs = explode( '/', $node->attribute( 'path_string' ) );
+					foreach( $allowedProducts as $allowedProduct ) {
+						if(
+							in_array( $allowedProduct['node_id'], $pathNodeIDs )
+							&& (
+								count( $allowedSizes ) === 0
+								|| in_array( $productSize, $allowedSizes )
+							)
+						) {
+							$isDiscountable = true;
+							break 2;
+						}
+					}
+				}
+			}
+			if( $isDiscountable ) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
+	}
+
+	private static function filterSaleProducts( array $products, eZContentObject $coupon ) {
+		$dataMap           = $coupon->attribute( 'data_map' );
+		$allowSaleProducts = (bool) $dataMap['sale_products']->attribute( 'content' );
+		if( $allowSaleProducts ) {
+			return $products;
+		}
+
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$object  = $product['item_object']->attribute( 'contentobject' );
+			$options = $product['item_object']->attribute( 'option_list' );
+			if( count( $options ) === 0 ) {
+				continue;
+			}
+			$SKU     = $options[0]->attribute( 'value' );
+
+			if( self::isSaleProduct( $object, $SKU ) === false ) {
+				$filteredProducts[] = $product;
+			}
+		}
+		return $filteredProducts;
+	}
+
+	public static function isSaleProduct( eZContentObject $product, $SKU ) {
+		$dataMap = $product->attribute( 'data_map' );
+		if( (bool) $dataMap['override_price']->attribute( 'content' ) ) {
+			return true;
+		}
+
+		$currentRegion = eZLocale::instance()->LocaleINI['default']->variable( 'RegionalSettings', 'Country' );
+		$db = eZDB::instance();
+		$q  = '
+			SELECT product_price.*
+			FROM product_price
+			WHERE
+				product_price.LongCode = "' . $db->escapeString( $SKU ) . '"
+				AND product_price.Region = "' . $db->escapeString( $currentRegion ) . '"';
+		$r  = $db->arrayQuery( $q );
+		if(
+			count( $r ) > 0
+			&& (bool) $r[0]['Override']
+		) {
+			return true;
+		}
+
+		return false;
 	}
 }
 
