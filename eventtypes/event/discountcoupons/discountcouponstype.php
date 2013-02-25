@@ -12,6 +12,8 @@ class DiscountCouponsType extends eZWorkflowEventType
 	const STATE_VALID_CODE   = 1;
 	const STATE_CANCEL       = 2;
 	const STATE_INVALID_CODE = 3;
+	const TYPE_FLAT          = 0;
+	const TYPE_PERCENT       = 1;
 
 	public function __construct() {
 		$this->eZWorkflowEventType( self::TYPE_ID, 'Discount Coupons' );
@@ -52,22 +54,50 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 		$parameters = $process->attribute( 'parameter_list' );
 		$coupon     = DiscountCouponsHelper::fetchByCode( $event->attribute( 'data_text1' ) );
+		$order      = eZOrder::fetch( $parameters['order_id'] );
 
-		$usage = new CouponUsage(
-			array(
-				'coupon_object_id' => $coupon->attribute( 'id' ),
-				'order_id'         => $parameters['order_id']
-			)
-		);
-		$usage->store();
+		// Remove any existing order coupon before appending a new item
+		$list = eZOrderItem::fetchListByType( $parameters['order_id'], 'coupon' );
+		if( count( $list ) > 0 ) {
+			foreach( $list as $item ) {
+				$item->remove();
+			}
+		}
 
-		$process->Template = array();
-		$process->Template['templateName'] = 'design:workflow/discount_coupon_not_applicable.tpl';
-		$process->Template['templateVars'] = array(
-			'process' => $process,
-			'event'   => $event
-		);
-		return eZWorkflowType::STATUS_FETCH_TEMPLATE_REPEAT;
+		$discountAmount = 0;
+		if(
+			$order instanceof eZOrder
+			&& $coupon instanceof eZContentObject
+		) {
+			$discountAmount = self::getProductsDiscountAmount( $order, $coupon );
+		}
+		if( $discountAmount > 0 ) {
+			$usage = new CouponUsage(
+				array(
+					'coupon_object_id' => $coupon->attribute( 'id' ),
+					'order_id'         => $parameters['order_id']
+				)
+			);
+			$usage->store();
+
+			$orderItem = new eZOrderItem( array(
+				'order_id'        => $parameters['order_id'],
+				'description'     => 'Discount',
+				'price'           => round( $discountAmount, 2 ) * -1,
+				'type'            => 'coupon',
+				'vat_is_included' => true,
+				'vat_type_id'     => 1
+			) );
+			$orderItem->store();
+		} else {
+			$process->Template = array();
+			$process->Template['templateName'] = 'design:workflow/discount_coupon_not_applicable.tpl';
+			$process->Template['templateVars'] = array(
+				'process' => $process,
+				'event'   => $event
+			);
+			return eZWorkflowType::STATUS_FETCH_TEMPLATE_REPEAT;
+		}
 
 		return eZWorkflowType::STATUS_ACCEPTED;
 	}
@@ -120,6 +150,22 @@ class DiscountCouponsType extends eZWorkflowEventType
 		}
 
 		return self::STATE_NO_INPUT;
+	}
+
+	private static function getProductsDiscountAmount( eZOrder $order, eZContentObject $coupon ) {
+		$discountableAmount = 10;
+
+		$dataMap  = $coupon->attribute( 'data_map' );
+		$discount = $dataMap['discount_value']->attribute( 'content' );
+		$type     = $dataMap['discount_type']->attribute( 'content' );
+		$type     = (int) $type[0];
+		if( $type === self::TYPE_FLAT ) {
+			$discountableAmount = min( $discountableAmount, $discount );
+		} elseif( $type === self::TYPE_PERCENT ) {
+			$discountableAmount = $discountableAmount * ( $discount / 100 );
+		}
+		$discountableAmount = round( $discountableAmount, 2 );
+		return $discountableAmount;
 	}
 }
 
