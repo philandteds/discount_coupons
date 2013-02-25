@@ -84,6 +84,14 @@ class DiscountCouponsHelper
 			return false;
 		}
 
+		$maxUsage = (int) $dataMap['max_usage_count']->attribute( 'content' );
+		if( $maxUsage > 0 ) {
+			$usageCheck = CouponUsage::fetchUsages( $coupon->attribute( 'id' ) );
+			if( count( $usageCheck['result'] ) >= $maxUsage ) {
+				return false;
+			}
+		}
+
 		return true;
 	}
 }

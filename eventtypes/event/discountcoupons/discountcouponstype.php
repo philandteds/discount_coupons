@@ -50,6 +50,17 @@ class DiscountCouponsType extends eZWorkflowEventType
 			return eZWorkflowType::STATUS_FETCH_TEMPLATE_REPEAT;
 		}
 
+		$parameters = $process->attribute( 'parameter_list' );
+		$coupon     = DiscountCouponsHelper::fetchByCode( $event->attribute( 'data_text1' ) );
+
+		$usage = new CouponUsage(
+			array(
+				'coupon_object_id' => $coupon->attribute( 'id' ),
+				'order_id'         => $parameters['order_id']
+			)
+		);
+		$usage->store();
+
 		$process->Template = array();
 		$process->Template['templateName'] = 'design:workflow/discount_coupon_not_applicable.tpl';
 		$process->Template['templateVars'] = array(
