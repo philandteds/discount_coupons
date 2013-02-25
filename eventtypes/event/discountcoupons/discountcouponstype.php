@@ -93,20 +93,22 @@ class DiscountCouponsType extends eZWorkflowEventType
 		if( $order instanceof eZOrder ) {
 			$xml = new SimpleXMLElement( $order->attribute( 'data_text_1' ) );
 			if( $xml != null ) {
-				$code = (string) $xml->discount_coupon_code;
+				$code = (string) $xml->coupon_code;
 				if( strlen( $code ) == 0 ) {
-					return self::STATE_NO_INPUT;
+					return self::STATE_CANCEL;
 				}
 
 				$coupon = DiscountCouponsHelper::fetchByCode( $code );
+				$event->setAttribute( 'data_text1', $code );
 				if( DiscountCouponsHelper::isValid( $coupon ) ) {
-					$event->setAttribute( 'data_text1', $code );
 					return self::STATE_VALID_CODE;
 				} else {
 					return self::STATE_INVALID_CODE;
 				}
 			}
 		}
+
+		return self::STATE_NO_INPUT;
 	}
 }
 
