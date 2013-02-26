@@ -156,6 +156,9 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$products = $order->attribute( 'product_items' );
 		$products = self::filterProductsByAllowedProducts( $products, $coupon );
 		$products = self::filterSaleProducts( $products, $coupon );
+		$products = self::filterProductsByRegion( $products, $coupon );
+		$products = self::filterProductsByColour( $products, $coupon );
+		$products = self::filterProductsBySize( $products, $coupon );
 
 		$discountableAmount = 0;
 		foreach( $products as $product ) {
@@ -287,6 +290,78 @@ class DiscountCouponsType extends eZWorkflowEventType
 		}
 
 		return false;
+	}
+
+	private static function filterProductsByRegion( array $products, eZContentObject $coupon ) {
+		$dataMap        = $coupon->attribute( 'data_map' );
+		$allowedRegions = $dataMap['regions']->attribute( 'content' );
+		if( strlen( $allowedRegions ) === 0 ) {
+			return $products;
+		}
+
+		$allowedRegions   = explode( ';', $allowedRegions );
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$options = $product['item_object']->attribute( 'option_list' );
+			if( count( $options ) === 0 ) {
+				continue;
+			}
+			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
+			$productRegion = $tmp[ count( $tmp ) - 1 ];
+			if( in_array( $productRegion, $allowedRegions ) ) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
+	}
+
+	private static function filterProductsByColour( array $products, eZContentObject $coupon ) {
+		$dataMap        = $coupon->attribute( 'data_map' );
+		$allowedColours = $dataMap['product_colours']->attribute( 'content' );
+		if( strlen( $allowedColours ) === 0 ) {
+			return $products;
+		}
+
+		$allowedColours   = explode( ';', $allowedColours );
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$options = $product['item_object']->attribute( 'option_list' );
+			if( count( $options ) === 0 ) {
+				continue;
+			}
+			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
+			$productColour = $tmp[ count( $tmp ) - 3 ];
+			if( in_array( $productColour, $allowedColours ) ) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
+	}
+
+	private static function filterProductsBySize( array $products, eZContentObject $coupon ) {
+		$dataMap      = $coupon->attribute( 'data_map' );
+		$allowedSizes = $dataMap['product_sizes']->attribute( 'content' );
+		if( strlen( $allowedSizes ) === 0 ) {
+			return $products;
+		}
+
+		$allowedSizes     = explode( ';', $allowedSizes );
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$options = $product['item_object']->attribute( 'option_list' );
+			if( count( $options ) === 0 ) {
+				continue;
+			}
+			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
+			$productSize = $tmp[ count( $tmp ) - 2 ];
+			if( in_array( $productSize, $allowedSizes ) ) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
 	}
 }
 
