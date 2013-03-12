@@ -2,7 +2,7 @@
 	<input type="hidden" name="{$attribute_base}_ezstring_data_text_{$attribute.id}" value="{$selected_items|implode( ';' )}" />
 	{foreach $possible_items as $item => $name}
 		<label>
-			<input type="checkbox" value="{$item}"{if $selected_items|contains( $item )} checked="checked"{/if}/>
+			<input type="checkbox" value="{$item}"{if and( ne( $attribute.content, '', ), $selected_items|contains( $item ) )} checked="checked"{/if}/>
 			{$name}
 		</label>
 	{/foreach}
