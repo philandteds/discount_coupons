@@ -3,4 +3,5 @@
 [EventSettings]
 ExtensionDirectories[]=discount_coupons
 AvailableEventTypes[]=event_discountcoupons
+AvailableEventTypes[]=event_updatecouponusage
 */ ?>

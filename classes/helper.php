@@ -106,4 +106,12 @@ class DiscountCouponsHelper
 
 		return true;
 	}
+
+	public static function getCouponCode( $coupon ) {
+		if( $coupon instanceof eZContentObject === false ) {
+			return false;
+		}
+		$dataMap = $coupon->attribute( 'data_map' );
+		return $dataMap['code']->attribute( 'content' );
+	}
 }

@@ -58,37 +58,41 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 		// Remove any existing order coupon before appending a new item
 		$list = eZOrderItem::fetchListByType( $parameters['order_id'], 'coupon' );
+		$list = array_merge( $list, eZOrderItem::fetchListByType( $parameters['order_id'], 'product_discount' ) );
 		if( count( $list ) > 0 ) {
 			foreach( $list as $item ) {
 				$item->remove();
 			}
 		}
 
-		$discountAmount = 0;
+		$discountProducts = array();
 		if(
 			$order instanceof eZOrder
 			&& $coupon instanceof eZContentObject
 		) {
-			$discountAmount = self::getProductsDiscountAmount( $order, $coupon );
+			$discountProducts = self::getDiscountProducts( $order, $coupon );
 		}
-		if( $discountAmount > 0 ) {
-			$usage = new CouponUsage(
-				array(
-					'coupon_object_id' => $coupon->attribute( 'id' ),
-					'order_id'         => $parameters['order_id']
-				)
-			);
-			$usage->store();
-
+		if( count( $discountProducts ) > 0 ) {
 			$orderItem = new eZOrderItem( array(
 				'order_id'        => $parameters['order_id'],
-				'description'     => 'Discount',
-				'price'           => round( $discountAmount, 2 ) * -1,
+				'description'     => DiscountCouponsHelper::getCouponCode( $coupon ),
+				'price'           => 0,
 				'type'            => 'coupon',
 				'vat_is_included' => true,
 				'vat_type_id'     => 1
 			) );
 			$orderItem->store();
+			foreach( $discountProducts as $discountProduct ) {
+				$orderItem = new eZOrderItem( array(
+					'order_id'        => $parameters['order_id'],
+					'description'     => $discountProduct['product_id'],
+					'price'           => round( $discountProduct['discount'], 2 ) * -1,
+					'type'            => 'product_discount',
+					'vat_is_included' => true,
+					'vat_type_id'     => 1
+				) );
+				$orderItem->store();
+			}
 		} else {
 			$process->Template = array();
 			$process->Template['templateName'] = 'design:workflow/discount_coupon_not_applicable.tpl';
@@ -152,29 +156,34 @@ class DiscountCouponsType extends eZWorkflowEventType
 		return self::STATE_NO_INPUT;
 	}
 
-	private static function getProductsDiscountAmount( eZOrder $order, eZContentObject $coupon ) {
+	private static function getDiscountProducts( eZOrder $order, eZContentObject $coupon ) {
 		$products = $order->attribute( 'product_items' );
 		$products = self::filterProductsByAllowedProducts( $products, $coupon );
 		$products = self::filterSaleProducts( $products, $coupon );
 		$products = self::filterProductsByColour( $products, $coupon );
 		$products = self::filterProductsBySize( $products, $coupon );
 
-		$discountableAmount = 0;
-		foreach( $products as $product ) {
-			$discountableAmount += $product['total_price_ex_vat'];
-		}
 
 		$dataMap  = $coupon->attribute( 'data_map' );
 		$discount = $dataMap['discount_value']->attribute( 'content' );
 		$type     = $dataMap['discount_type']->attribute( 'content' );
 		$type     = (int) $type[0];
-		if( $type === self::TYPE_FLAT ) {
-			$discountableAmount = min( $discountableAmount, $discount );
-		} elseif( $type === self::TYPE_PERCENT ) {
-			$discountableAmount = $discountableAmount * ( $discount / 100 );
+
+		$discountProducts = array();
+		foreach( $products as $product ) {
+			if( $type === self::TYPE_FLAT ) {
+				$productDiscount = min( $product['total_price_ex_vat'], $discount );
+			} elseif( $type === self::TYPE_PERCENT ) {
+				$productDiscount = $product['total_price_ex_vat'] * ( $discount / 100 );
+			}
+
+			$discountProducts[] = array(
+				'product_id'   => $product['id'],
+				'discount'     => round( $productDiscount, 2 )
+			);
 		}
-		$discountableAmount = round( $discountableAmount, 2 );
-		return $discountableAmount;
+
+		return $discountProducts;
 	}
 
 	private static function filterProductsByAllowedProducts( array $products, eZContentObject $coupon ) {
