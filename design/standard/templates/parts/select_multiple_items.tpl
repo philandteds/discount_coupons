@@ -1,12 +1,26 @@
+{def $checked = false()}
 <div class="select-items">
 	<input type="hidden" name="{$attribute_base}_ezstring_data_text_{$attribute.id}" value="{$selected_items|implode( ';' )}" />
 	{foreach $possible_items as $item => $name}
 		<label>
-			<input type="checkbox" value="{$item}"{if and( ne( $attribute.content, '', ), $selected_items|contains( $item ) )} checked="checked"{/if}/>
+			{set $checked = false()}
+			{if ne( $attribute.content, '', )}
+				{foreach $selected_items as $selected_item}
+					{if and(
+						eq( $selected_item, $item ),
+						eq( $selected_item|count_chars(), $item|count_chars() )
+					)}
+						{set $checked = true()}
+						{break}
+					{/if}
+				{/foreach}
+			{/if}
+			<input type="checkbox" value="{$item}"{if $checked} checked="checked"{/if}/>
 			{$name}
 		</label>
 	{/foreach}
 </div>
+{undef $checked}
 {run-once}
 {literal}
 <script type="text/javascript">
