@@ -156,7 +156,6 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$products = $order->attribute( 'product_items' );
 		$products = self::filterProductsByAllowedProducts( $products, $coupon );
 		$products = self::filterSaleProducts( $products, $coupon );
-		$products = self::filterProductsByRegion( $products, $coupon );
 		$products = self::filterProductsByColour( $products, $coupon );
 		$products = self::filterProductsBySize( $products, $coupon );
 
@@ -290,30 +289,6 @@ class DiscountCouponsType extends eZWorkflowEventType
 		}
 
 		return false;
-	}
-
-	private static function filterProductsByRegion( array $products, eZContentObject $coupon ) {
-		$dataMap        = $coupon->attribute( 'data_map' );
-		$allowedRegions = $dataMap['regions']->attribute( 'content' );
-		if( strlen( $allowedRegions ) === 0 ) {
-			return $products;
-		}
-
-		$allowedRegions   = explode( ';', $allowedRegions );
-		$filteredProducts = array();
-		foreach( $products as $product ) {
-			$options = $product['item_object']->attribute( 'option_list' );
-			if( count( $options ) === 0 ) {
-				continue;
-			}
-			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
-			$productRegion = $tmp[ count( $tmp ) - 1 ];
-			if( in_array( $productRegion, $allowedRegions ) ) {
-				$filteredProducts[] = $product;
-			}
-		}
-
-		return $filteredProducts;
 	}
 
 	private static function filterProductsByColour( array $products, eZContentObject $coupon ) {

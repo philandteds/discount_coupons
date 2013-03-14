@@ -8,11 +8,13 @@
 class DiscountCouponsHelper
 {
 	public function fetchRegions() {
-		$q  = '
-			SELECT DISTINCT SUBSTRING_INDEX( LongCode, \'_\', -1 ) as item
-			FROM product_price
-		';
-		return array( 'result' => self::fetchItems( $q ) );
+		$ini     = eZINI::instance();
+		$regions = $ini->variableArray( 'RegionalSettings', 'TranslationSA' );
+		$result  = array();
+		foreach( $regions as $sa => $region ) {
+			$result[ $sa ] = $region[0];
+		}
+		return array( 'result' => $result );
 	}
 
 	public function fetchProductColours() {
@@ -89,6 +91,16 @@ class DiscountCouponsHelper
 			$usageCheck = CouponUsage::fetchUsages( $coupon->attribute( 'id' ) );
 			if( count( $usageCheck['result'] ) >= $maxUsage ) {
 				return false;
+			}
+		}
+
+		if( isset( $dataMap['regions'] ) ) {
+			$allowedRegions = $dataMap['regions']->attribute( 'content' );
+			if( strlen( $allowedRegions ) > 0 ) {
+				$allowedRegions = explode( ';', $allowedRegions );
+				if( in_array( $GLOBALS['eZCurrentAccess']['name'], $allowedRegions ) === false ) {
+					return false;
+				}
 			}
 		}
 
