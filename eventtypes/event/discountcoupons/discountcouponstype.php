@@ -170,17 +170,24 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$type     = (int) $type[0];
 
 		$discountProducts = array();
-		foreach( $products as $product ) {
-			if( $type === self::TYPE_FLAT ) {
-				$productDiscount = min( $product['total_price_ex_vat'], $discount );
-			} elseif( $type === self::TYPE_PERCENT ) {
-				$productDiscount = $product['total_price_ex_vat'] * ( $discount / 100 );
+		if( $type === self::TYPE_PERCENT ) {
+			foreach( $products as $product ) {
+				$discountProducts[] = array(
+					'product_id'   => $product['id'],
+					'discount'     => round( $product['total_price_ex_vat'] * ( $discount / 100 ), 2 )
+				);
 			}
+		} elseif( $type === self::TYPE_FLAT ) {
+			if( count( $products ) > 0 ) {
+				// include shipping info
+				$shipping = eZShippingManager::getShippingInfo( $order->attribute( 'productcollection_id' ) );
+				$total    = $order->attribute( 'total_inc_vat' ) + $shipping['cost'];
 
-			$discountProducts[] = array(
-				'product_id'   => $product['id'],
-				'discount'     => round( $productDiscount, 2 )
-			);
+				$discountProducts[] = array(
+					'product_id'   => 'all',
+					'discount'     => round( min( $total, $discount ), 2 )
+				);
+			}
 		}
 
 		return $discountProducts;
