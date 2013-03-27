@@ -347,8 +347,13 @@ class DiscountCouponsType extends eZWorkflowEventType
 			}
 			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
 			$productSize = $tmp[ count( $tmp ) - 2 ];
-			if( in_array( $productSize, $allowedSizes ) ) {
-				$filteredProducts[] = $product;
+			foreach( $allowedSizes as $allowedSize ) {
+				if(
+					$productSize == $allowedSize
+					&& strlen( $productSize ) == strlen( $allowedSize )
+				) {
+					$filteredProducts[] = $product;
+				}
 			}
 		}
 
