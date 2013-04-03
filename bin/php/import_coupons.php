@@ -49,13 +49,14 @@ foreach( $oldCoupons as $node ) {
 	$dataMap = $node->attribute( 'data_map' );
 	$coupon  = $dataMap['coupon']->attribute( 'content' );
 	$info    = array(
-		'name'           => $dataMap['name']->attribute( 'content' ),
-		'description'    => trim( strip_tags( $dataMap['description']->toString() ) ),
-		'code'           => $coupon['code'],
-		'discount_value' => $coupon['discount'],
-		'discount_type'  => (int) $coupon['discount_type'] === ezCouponType::DISCOUNT_TYPE_FLAT ? 'Flat' : 'Percent',
-		'start_date'     => $coupon['from']->attribute( 'timestamp' ),
-		'end_date'       => $coupon['till']->attribute( 'timestamp' ),
+		'name'                    => $dataMap['name']->attribute( 'content' ),
+		'description'             => trim( strip_tags( $dataMap['description']->toString() ) ),
+		'code'                    => $coupon['code'],
+		'discount_value'          => $coupon['discount'],
+		'discount_type'           => (int) $coupon['discount_type'] === ezCouponType::DISCOUNT_TYPE_FLAT ? 'Flat' : 'Percent',
+		'start_date'              => $coupon['from']->attribute( 'timestamp' ),
+		'end_date'                => $coupon['till']->attribute( 'timestamp' ),
+		'products_and_categories' => $dataMap['products']->toString()
 	);
 
 	if( isset( $oldCouponsData[ $info['code'] ] ) === false ) {
