@@ -18,9 +18,10 @@ class DiscountCouponsHelper
 	}
 
 	public function fetchProductColours() {
-		$q  = '
-			SELECT DISTINCT SUBSTRING_INDEX( SUBSTRING_INDEX( LongCode, \'_\', -3 ), \'_\', 1 ) as item
-			FROM product_price
+		$q = '
+			SELECT DISTINCT Colour name, ColourCode item
+			FROM product
+			WHERE Colour != "" AND ColourCode != ""
 		';
 		return array( 'result' => self::fetchItems( $q ) );
 	}
@@ -39,7 +40,7 @@ class DiscountCouponsHelper
 		$r     = $db->arrayQuery( $q );
 		foreach( $r as $row ) {
 			if( strlen( $row['item'] ) > 0 ) {
-				$items[ $row['item'] ] = $row['item'];
+				$items[ $row['item'] ] = isset( $row['name'] ) ? $row['name'] : $row['item'];
 			}
 		}
 		return $items;

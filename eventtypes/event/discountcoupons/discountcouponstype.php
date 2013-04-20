@@ -158,11 +158,10 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 	private static function getDiscountProducts( eZOrder $order, eZContentObject $coupon ) {
 		$products = $order->attribute( 'product_items' );
+		$products = self::filterProductsByContentClass( $products, $coupon );
 		$products = self::filterProductsByAllowedProducts( $products, $coupon );
 		$products = self::filterSaleProducts( $products, $coupon );
 		$products = self::filterProductsByColour( $products, $coupon );
-		$products = self::filterProductsBySize( $products, $coupon );
-
 
 		$dataMap  = $coupon->attribute( 'data_map' );
 		$discount = $dataMap['discount_value']->attribute( 'content' );
@@ -193,11 +192,23 @@ class DiscountCouponsType extends eZWorkflowEventType
 		return $discountProducts;
 	}
 
+	private static function filterProductsByContentClass( array $products, eZContentObject $coupon ) {
+		$productClasses   = array( 'xrow_product' );
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$classIdentifier = $product['item_object']->attribute( 'contentobject' )->attribute( 'class_identifier' );
+			if( in_array( $classIdentifier, $productClasses ) ) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
+	}
+
 	private static function filterProductsByAllowedProducts( array $products, eZContentObject $coupon ) {
 		$dataMap           = $coupon->attribute( 'data_map' );
 		$allowedProducts   = $dataMap['products_and_categories']->attribute( 'content' );
 		$allowedProducts   = $allowedProducts['relation_list'];
-		$ageCategories     = eZINI::instance( 'mk.ini' )->variableArray( 'SizeSettings', 'CategorySizes' );
 		$allowedCategories = array();
 		foreach( $allowedProducts as $allowedProduct ) {
 			if( $allowedProduct['contentclass_identifier'] === 'product_category' ) {
@@ -205,26 +216,11 @@ class DiscountCouponsType extends eZWorkflowEventType
 			}
 		}
 
-		$allowedSizes = array();
-		foreach( $allowedCategories as $category ) {
-			$dataMap    = $category->attribute( 'data_map' );
-			$identifier = $dataMap['identifier']->attribute( 'content' );
-			if( isset( $ageCategories[ $identifier ] ) ) {
-				$allowedSizes = array_merge( $allowedSizes, $ageCategories[ $identifier ] );
-			}
-		}
-		$allowedSizes = array_unique( $allowedSizes );
-
 		$filteredProducts = array();
 		foreach( $products as $product ) {
-			$productSize = null;
-			$options     = $product['item_object']->attribute( 'option_list' );
+			$options = $product['item_object']->attribute( 'option_list' );
 			if( count( $options ) === 0 ) {
 				continue;
-			}
-			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
-			if( count( $tmp ) > 2 ) {
-				$productSize = $tmp[ count( $tmp ) - 2 ];
 			}
 
 			$isDiscountable = true;
@@ -238,13 +234,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 				foreach( $nodes as $node ) {
 					$pathNodeIDs = explode( '/', $node->attribute( 'path_string' ) );
 					foreach( $allowedProducts as $allowedProduct ) {
-						if(
-							in_array( $allowedProduct['node_id'], $pathNodeIDs )
-							&& (
-								count( $allowedSizes ) === 0
-								|| in_array( $productSize, $allowedSizes )
-							)
-						) {
+						if( in_array( $allowedProduct['node_id'], $pathNodeIDs ) ) {
 							$isDiscountable = true;
 							break 2;
 						}
@@ -273,8 +263,8 @@ class DiscountCouponsType extends eZWorkflowEventType
 			if( count( $options ) === 0 ) {
 				continue;
 			}
-			$SKU     = $options[0]->attribute( 'value' );
 
+			$SKU = $options[0]->attribute( 'value' );
 			if( self::isSaleProduct( $object, $SKU ) === false ) {
 				$filteredProducts[] = $product;
 			}
@@ -283,11 +273,6 @@ class DiscountCouponsType extends eZWorkflowEventType
 	}
 
 	public static function isSaleProduct( eZContentObject $product, $SKU ) {
-		$dataMap = $product->attribute( 'data_map' );
-		if( (bool) $dataMap['override_price']->attribute( 'content' ) ) {
-			return true;
-		}
-
 		$currentRegion = eZLocale::instance()->LocaleINI['default']->variable( 'RegionalSettings', 'Country' );
 		$db = eZDB::instance();
 		$q  = '
@@ -299,7 +284,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$r  = $db->arrayQuery( $q );
 		if(
 			count( $r ) > 0
-			&& (bool) $r[0]['Override']
+			&& (float) $r[0]['Override'] > 0
 		) {
 			return true;
 		}
@@ -325,35 +310,6 @@ class DiscountCouponsType extends eZWorkflowEventType
 			$productColour = $tmp[ count( $tmp ) - 3 ];
 			if( in_array( $productColour, $allowedColours ) ) {
 				$filteredProducts[] = $product;
-			}
-		}
-
-		return $filteredProducts;
-	}
-
-	private static function filterProductsBySize( array $products, eZContentObject $coupon ) {
-		$dataMap      = $coupon->attribute( 'data_map' );
-		$allowedSizes = $dataMap['product_sizes']->attribute( 'content' );
-		if( strlen( $allowedSizes ) === 0 ) {
-			return $products;
-		}
-
-		$allowedSizes     = explode( ';', $allowedSizes );
-		$filteredProducts = array();
-		foreach( $products as $product ) {
-			$options = $product['item_object']->attribute( 'option_list' );
-			if( count( $options ) === 0 ) {
-				continue;
-			}
-			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
-			$productSize = $tmp[ count( $tmp ) - 2 ];
-			foreach( $allowedSizes as $allowedSize ) {
-				if(
-					$productSize == $allowedSize
-					&& strlen( $productSize ) == strlen( $allowedSize )
-				) {
-					$filteredProducts[] = $product;
-				}
 			}
 		}
 
