@@ -193,7 +193,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 	}
 
 	private static function filterProductsByContentClass( array $products, eZContentObject $coupon ) {
-		$productClasses   = array( 'xrow_product' );
+		$productClasses   = array( 'xrow_product', 'sale_bundle' );
 		$filteredProducts = array();
 		foreach( $products as $product ) {
 			$classIdentifier = $product['item_object']->attribute( 'contentobject' )->attribute( 'class_identifier' );
@@ -218,15 +218,8 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 		$filteredProducts = array();
 		foreach( $products as $product ) {
-			$options = $product['item_object']->attribute( 'option_list' );
-			if( count( $options ) === 0 ) {
-				continue;
-			}
-
 			$isDiscountable = true;
-			$object = $product['item_object']->attribute( 'contentobject' );
-			$SKU    = $options[0]->attribute( 'value' );
-
+			$object         = $product['item_object']->attribute( 'contentobject' );
 			if( count( $allowedProducts ) > 0 ) {
 				$isDiscountable = false;
 
@@ -258,6 +251,12 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 		$filteredProducts = array();
 		foreach( $products as $product ) {
+			$classIdentifier = $product['item_object']->attribute( 'contentobject' )->attribute( 'class_identifier' );
+			if( $classIdentifier === 'sale_bundle' ) {
+				$filteredProducts[] = $product;
+				continue;
+			}
+
 			$object  = $product['item_object']->attribute( 'contentobject' );
 			$options = $product['item_object']->attribute( 'option_list' );
 			if( count( $options ) === 0 ) {
@@ -302,13 +301,26 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$allowedColours   = explode( ';', $allowedColours );
 		$filteredProducts = array();
 		foreach( $products as $product ) {
-			$options = $product['item_object']->attribute( 'option_list' );
-			if( count( $options ) === 0 ) {
-				continue;
+			$colour = false;
+
+			$classIdentifier = $product['item_object']->attribute( 'contentobject' )->attribute( 'class_identifier' );
+			if( $classIdentifier === 'sale_bundle' ) {
+				$variation = PTBasketCheckerHandler::getProductsVariation( $product['item_object'] );
+				if( $variation instanceof ProductVariation ) {
+					$extraData = $variation->attribute( 'extra_data' );
+					if( isset( $extraData['colour'] ) ) {
+						$colour = $extraData['colour'];
+					}
+				}
+			} else {
+				$options = $product['item_object']->attribute( 'option_list' );
+				if( count( $options ) > 0 ) {
+					$tmp    = explode( '_', $options[0]->attribute( 'value' ) );
+					$colour = $tmp[ count( $tmp ) - 3 ];
+				}
 			}
-			$tmp = explode( '_', $options[0]->attribute( 'value' ) );
-			$productColour = $tmp[ count( $tmp ) - 3 ];
-			if( in_array( $productColour, $allowedColours ) ) {
+
+			if( in_array( $colour, $allowedColours ) ) {
 				$filteredProducts[] = $product;
 			}
 		}

@@ -22,8 +22,11 @@ class DiscountCouponsHelper
 			SELECT DISTINCT Colour name, ColourCode item
 			FROM product
 			WHERE Colour != "" AND ColourCode != ""
+			ORDER BY name ASC
 		';
-		return array( 'result' => self::fetchItems( $q ) );
+		$colours = self::fetchItems( $q );
+		asort( $colours );
+		return array( 'result' => $colours );
 	}
 
 	public function fetchProductSizes() {
