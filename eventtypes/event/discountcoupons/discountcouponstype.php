@@ -288,7 +288,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 			return true;
 		}
 
-		$currentRegion = eZINI::instance( 'shop.ini' )->variable( 'PriceSettings', 'PriceGroup' );
+		$currentRegion = eZLocale::instance()->LocaleINI['default']->variable( 'RegionalSettings', 'Country' );
 		$db = eZDB::instance();
 		$q  = '
 			SELECT product_price.*
