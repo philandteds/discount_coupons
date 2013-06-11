@@ -70,8 +70,20 @@ class DiscountCouponsType extends eZWorkflowEventType
 			$order instanceof eZOrder
 			&& $coupon instanceof eZContentObject
 		) {
-			$discountProducts = self::getDiscountProducts( $order, $coupon );
+			$dataMap = $coupon->attribute( 'data_map' );
+			if( (bool) $dataMap['free_shipping']->attribute( 'content' ) ) {
+				$shipping         = eZShippingManager::getShippingInfo( $order->attribute( 'productcollection_id' ) );
+				$discountProducts = array(
+					array(
+						'product_id' => 'all',
+						'discount'   => $shipping['cost']
+					)
+				);
+			} else {
+				$discountProducts = self::getDiscountProducts( $order, $coupon );
+			}
 		}
+
 		if( count( $discountProducts ) > 0 ) {
 			$orderItem = new eZOrderItem( array(
 				'order_id'        => $parameters['order_id'],
