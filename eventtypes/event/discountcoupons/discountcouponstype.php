@@ -175,17 +175,27 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$products = self::filterSaleProducts( $products, $coupon );
 		$products = self::filterProductsByColour( $products, $coupon );
 
-		$dataMap  = $coupon->attribute( 'data_map' );
-		$discount = $dataMap['discount_value']->attribute( 'content' );
-		$type     = $dataMap['discount_type']->attribute( 'content' );
-		$type     = (int) $type[0];
+		$dataMap     = $coupon->attribute( 'data_map' );
+		$discount    = $dataMap['discount_value']->attribute( 'content' );
+		$type        = $dataMap['discount_type']->attribute( 'content' );
+		$type        = (int) $type[0];
+		$maxItemQty  = isset( $dataMap['max_item_quantity'] )
+			? $dataMap['max_item_quantity']->attribute( 'content' )
+			: 0;
+		$maxItemQty = strlen( $maxItemQty ) === 0 ? 1 : (int) $maxItemQty; 
 
 		$discountProducts = array();
 		if( $type === self::TYPE_PERCENT ) {
 			foreach( $products as $product ) {
+				if( $maxItemQty > 0 ) {
+					$itemQty = min( $product['item_count'], $maxItemQty );
+				} else {
+					$itemQty = $product['item_count'];
+				}
+				
 				$discountProducts[] = array(
 					'product_id'   => $product['id'],
-					'discount'     => round( $product['total_price_ex_vat'] * ( $discount / 100 ), 2 )
+					'discount'     => round( $itemQty * $product['price_inc_vat'] * ( $discount / 100 ), 2 )
 				);
 			}
 		} elseif( $type === self::TYPE_FLAT ) {
