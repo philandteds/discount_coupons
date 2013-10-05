@@ -77,7 +77,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 				$shipping         = eZShippingManager::getShippingInfo( $order->attribute( 'productcollection_id' ) );
 				$discountProducts = array(
 					array(
-						'product_id' => 'all',
+						'product_id' => 'shipping',
 						'discount'   => $shipping['cost']
 					)
 				);
