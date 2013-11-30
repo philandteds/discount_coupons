@@ -158,11 +158,12 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 	private static function getDiscountProducts( eZOrder $order, eZContentObject $coupon ) {
 		$products = $order->attribute( 'product_items' );
+		$products = self::filterProductsByContentClass( $products );
 		$products = self::filterProductsByAllowedProducts( $products, $coupon );
 		$products = self::filterSaleProducts( $products, $coupon );
 		$products = self::filterProductsByColour( $products, $coupon );
 		$products = self::filterProductsBySize( $products, $coupon );
-
+		$products = self::filterUserChoiseSaleBundles( $products, $coupon );
 
 		$dataMap     = $coupon->attribute( 'data_map' );
 		$discount    = $dataMap['discount_value']->attribute( 'content' );
@@ -171,7 +172,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$maxItemQty  = isset( $dataMap['max_item_quantity'] )
 			? $dataMap['max_item_quantity']->attribute( 'content' )
 			: 0;
-		$maxItemQty = strlen( $maxItemQty ) === 0 ? 1 : (int) $maxItemQty; 
+		$maxItemQty = strlen( $maxItemQty ) === 0 ? 1 : (int) $maxItemQty;
 
 		$discountProducts = array();
 		if( $type === self::TYPE_PERCENT ) {
@@ -181,7 +182,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 				} else {
 					$itemQty = $product['item_count'];
 				}
-				
+
 				$discountProducts[] = array(
 					'product_id'   => $product['id'],
 					'discount'     => round( $itemQty * $product['price_inc_vat'] * ( $discount / 100 ), 2 )
@@ -201,6 +202,22 @@ class DiscountCouponsType extends eZWorkflowEventType
 		}
 
 		return $discountProducts;
+	}
+
+	private static function filterProductsByContentClass( array $products ) {
+		$productClasses   = array( 'xrow_product', 'sale_bundle_uc' );
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			$object = $product['item_object']->attribute( 'contentobject' );
+			if(
+				self::isProduct( $object )
+				|| self::isUserChoiceSaleBundle( $object )
+			) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
 	}
 
 	private static function filterProductsByAllowedProducts( array $products, eZContentObject $coupon ) {
@@ -278,6 +295,12 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 		$filteredProducts = array();
 		foreach( $products as $product ) {
+			// We are filtering only products and passing the rest
+			if( self::isProduct( $product['item_object']->attribute( 'contentobject' ) ) === false ) {
+				$filteredProducts[] = $product;
+				continue;
+			}
+
 			$object  = $product['item_object']->attribute( 'contentobject' );
 			$options = $product['item_object']->attribute( 'option_list' );
 			if( count( $options ) === 0 ) {
@@ -327,6 +350,12 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$allowedColours   = explode( ';', $allowedColours );
 		$filteredProducts = array();
 		foreach( $products as $product ) {
+			// We are filtering only products and passing the rest
+			if( self::isProduct( $product['item_object']->attribute( 'contentobject' ) ) === false ) {
+				$filteredProducts[] = $product;
+				continue;
+			}
+
 			$options = $product['item_object']->attribute( 'option_list' );
 			if( count( $options ) === 0 ) {
 				continue;
@@ -351,6 +380,11 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$allowedSizes     = explode( ';', $allowedSizes );
 		$filteredProducts = array();
 		foreach( $products as $product ) {
+			// We are filtering only products and passing the rest
+			if( self::isProduct( $product['item_object']->attribute( 'contentobject' ) ) === false ) {
+				$filteredProducts[] = $product;
+			}
+
 			$options = $product['item_object']->attribute( 'option_list' );
 			if( count( $options ) === 0 ) {
 				continue;
@@ -368,6 +402,43 @@ class DiscountCouponsType extends eZWorkflowEventType
 		}
 
 		return $filteredProducts;
+	}
+
+	private static function filterUserChoiseSaleBundles( array $products, eZContentObject $coupon ) {
+		$dataMap           = $coupon->attribute( 'data_map' );
+		$allowedSizes      = $dataMap['product_sizes']->attribute( 'content' );
+		$allowedColours    = $dataMap['product_colours']->attribute( 'content' );
+		$allowSaleProducts = (bool) $dataMap['sale_products']->attribute( 'content' );
+		$type              = $dataMap['discount_type']->attribute( 'content' );
+		$type              = (int) $type[0];
+
+		$allowUserChoiseBundles = strlen( $allowedColours ) === 0
+			&& strlen( $allowedSizes ) === 0
+			&& $allowSaleProducts
+			&& $type === self::TYPE_FLAT;
+
+		$filteredProducts = array();
+		foreach( $products as $product ) {
+			// We are filtering only user chois bundles and passing the rest
+			if( self::isUserChoiceSaleBundle(  $product['item_object']->attribute( 'contentobject' ) ) === false ) {
+				$filteredProducts[] = $product;
+				continue;
+			}
+
+			if( $allowUserChoiseBundles ) {
+				$filteredProducts[] = $product;
+			}
+		}
+
+		return $filteredProducts;
+	}
+
+	private static function isProduct( eZContentObject $product ) {
+		return $product->attribute( 'class_identifier' ) === 'xrow_product';
+	}
+
+	private static function isUserChoiceSaleBundle( eZContentObject $product ) {
+		return $product->attribute( 'class_identifier' ) === 'sale_bundle_uc';
 	}
 }
 
