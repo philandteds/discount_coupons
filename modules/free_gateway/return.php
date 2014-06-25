@@ -9,8 +9,10 @@ $order = eZOrder::fetch( (int) $Params['OrderID'] );
 if( $order instanceof eZOrder === false ) {
 	return $Params['Module']->handleError( eZError::KERNEL_NOT_FOUND, 'kernel' );
 }
+
+$isAllowed = eZINI::instance( 'shopping.ini' )->variable( 'General', 'FreeGatewayEnabled' ) == 'enabled';
 if(
-	$order->attribute( 'total_inc_vat' ) > 0
+	( $order->attribute( 'total_inc_vat' ) > 0 && $isAllowed === false )
 	|| (bool) $order->attribute( 'is_temporary' ) !== true
 ) {
 	return $Params['Module']->handleError( eZError::KERNEL_NOT_FOUND, 'kernel' );
