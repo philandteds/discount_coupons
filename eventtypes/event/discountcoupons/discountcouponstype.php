@@ -277,7 +277,6 @@ class DiscountCouponsType extends eZWorkflowEventType
 		foreach( $products as $product ) {
 			$classIdentifier = $product['item_object']->attribute( 'contentobject' )->attribute( 'class_identifier' );
 			if( $classIdentifier === 'sale_bundle' ) {
-				$filteredProducts[] = $product;
 				continue;
 			}
 
