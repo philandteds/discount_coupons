@@ -6,7 +6,7 @@ require 'autoload.php';
 $cli = eZCLI::instance();
 
 $scriptSettings = array();
-$scriptSettings['description']    = 'Imports old coupons to new ones';
+$scriptSettings['description']    = 'Bulk generates discount coupons with random codes.';
 $scriptSettings['use-session']    = true;
 $scriptSettings['use-modules']    = true;
 $scriptSettings['use-extensions'] = true;
@@ -28,8 +28,8 @@ $options = $script->getOptions(
         'end-date' => 'yyyy-mm-dd format.',
         'max-usage-count' => 'The number of times a discount code may be used - 0 = unlimited. Default is unlimited.',
         'max-item-quantity' => 'The maxiumum quantity of items this discount can apply to, per product.',
-        'sale-products' => '1 = Allow the discount to be used with sale items. 0 = Discount only on non-sale items.',
-        'products-and_-ategories' => 'List of product and category contentobject_ids. Delimited by vertical bar. Default = no limitation.',
+        'sale-products' => '1 = Allow the discount to be used with sale items. 0 = Discount only on non-sale items. Default = 0.',
+        'products-and-categories' => 'List of product and category contentobject_ids. Delimited by vertical bar. Default = no limitation.',
         'regions' => 'Regions allowed. Default = No limitation.',
         'product-colours' => 'Product colours allowed. Default = no limitation.'
     ),
