@@ -7,30 +7,34 @@ $cli = eZCLI::instance();
 
 $scriptSettings = array();
 $scriptSettings['description']    = 'Imports old coupons to new ones';
-$scriptSettings['use-session']    = false;
+$scriptSettings['use-session']    = true;
 $scriptSettings['use-modules']    = true;
 $scriptSettings['use-extensions'] = true;
 
 $script = eZScript::instance( $scriptSettings );
 
 $options = $script->getOptions(
-    '[discount_type:][discount_value:][csv_filename:][description:][free_shipping:][start_date:][end_date:]' .
-            '[max_usage_count:][max_item_quantity:][sale_products:][products_and_categories:]' .
-            '[regions:][product_colours:]', '[root_url_alias][number_of_coupons_to_generate][discount_type][discount_value]', array(
-        'discount_type' => 'FLAT or PERCENT. Required.',
-        'discount_value' => 'Either the discount %, or discount $ amount (depending on discount_type). Required.',
-        'csv_filename' => 'Save generated discount coupons to the given CSV file.',
+    '[discount-type:][discount-value:][csv-filename:][description:][free-shipping:][start-date:][end-date:]' .
+            '[max-usage-count:][max-item-quantity:][sale-products:][products-and-categories:]' .
+            '[regions:][product-colours:]',
+    '[root-url-alias][number-of-coupons-to-generate][discount-type][discount-value]',
+    array(
+        'discount-type' => 'FLAT or PERCENT. Required.',
+        'discount-value' => 'Either the discount %, or discount $ amount (depending on discount_type). Required.',
+        'csv-filename' => 'Save generated discount coupons to the given CSV file.',
         'description' => 'Optional description field for generated coupon.',
-        'free_shipping' => '1 = Yes. 0 = No.',
-        'start_date' => 'yyyy-mm-dd format.',
-        'end_date' => 'yyyy-mm-dd format.',
-        'max_usage_count' => 'The number of times a discount code may be used - 0 = unlimited.',
-        'max_item_quantity' => 'The maxiumum quantity of items this discount can apply to, per product.',
-        'sale_products' => '1 = Allow the discount to be used with sale items. 0 = Discount only on non-sale items.',
-        'products_and_categories' => 'List of product and category contentobject_ids. Delimited by vertical bar.',
-        'regions' => 'Regions allowed. Blank = No limitation.',
-        'product_colours' => 'Product colours allowed. Blank = no limitation.'
-    )
+        'free-shipping' => '1 = Yes. 0 = No. Default = 0',
+        'start-date' => 'yyyy-mm-dd format.',
+        'end-date' => 'yyyy-mm-dd format.',
+        'max-usage-count' => 'The number of times a discount code may be used - 0 = unlimited. Default is unlimited.',
+        'max-item-quantity' => 'The maxiumum quantity of items this discount can apply to, per product.',
+        'sale-products' => '1 = Allow the discount to be used with sale items. 0 = Discount only on non-sale items.',
+        'products-and_-ategories' => 'List of product and category contentobject_ids. Delimited by vertical bar. Default = no limitation.',
+        'regions' => 'Regions allowed. Default = No limitation.',
+        'product-colours' => 'Product colours allowed. Default = no limitation.'
+    ),
+    false,
+    array("user" => true)
 );
 
 $script->startup();
@@ -57,10 +61,10 @@ $discountValue = $arguments[3];
 
 switch(strtoupper($discountType)) {
     case 'FLAT':
-        $attributes['discount_type'] = 0; // check this value
+        $attributes['discount_type'] = 'Flat'; // check this value
         break;
     case 'PERCENT':
-        $attributes['discount_type'] = 1; // check this value
+        $attributes['discount_type'] = 'Percent'; // check this value
         break;
     default:
         $cli->error("discount_type must be either FLAT or PERCENT");
@@ -74,17 +78,17 @@ if (!is_numeric($discountValue)) {
 
 $attributes['discount_value'] = $discountValue;
 $attributes['description'] = $options['description'];
-$attributes['free_shipping'] = $options['free_shipping'];
-$attributes['start_date'] = strtotime('YY-mm-dd', $options['start_date']);
-$attributes['end_date'] = strtotime('YY-mm-dd', $options['end_date']);
-$attributes['max_usage_count'] = $options['max_usage_count'];
-$attributes['max_item_quantity'] = $options['max_item_quantity'];
-$attributes['sale_products'] = $options['sale_products'];
-$attributes['products_and_categories'] = $options['products_and_categories'];
+$attributes['free_shipping'] = $options['free-shipping'];
+$attributes['start_date'] = strtotime( $options['start-date']);
+$attributes['end_date'] = strtotime( $options['end-date']);
+$attributes['max_usage_count'] = $options['max-usage-count'];
+$attributes['max_item_quantity'] = $options['max-item-quantity'];
+$attributes['sale_products'] = $options['sale-products'];
+$attributes['products_and_categories'] = $options['products-and-categories'];
 $attributes['regions'] = $options['regions'];
-$attributes['product_colours'] = $options['product_colours'];
+$attributes['product_colours'] = $options['product-colours'];
 
-$csvFilename = $options['csv_filename'];
+$csvFilename = $options['csv-filename'];
 
 $couponsGenerated = array();
 
