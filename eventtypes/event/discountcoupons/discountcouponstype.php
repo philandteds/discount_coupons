@@ -317,7 +317,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 	public static function isSaleProduct( eZContentObject $product, $SKU ) {
 		$dataMap = $product->attribute( 'data_map' );
-		if( (bool) $dataMap['override_price']->attribute( 'content' ) ) {
+		if( isset($dataMap['override_price']) && (bool) $dataMap['override_price']->attribute( 'content' ) ) {
 			return true;
 		}
 
@@ -372,7 +372,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 	private static function filterProductsBySize( array $products, eZContentObject $coupon ) {
 		$dataMap      = $coupon->attribute( 'data_map' );
-		$allowedSizes = $dataMap['product_sizes']->attribute( 'content' );
+		$allowedSizes = isset($dataMap['product_sizes']) ? $dataMap['product_sizes']->attribute( 'content' ) : '';
 		if( strlen( $allowedSizes ) === 0 ) {
 			return $products;
 		}
@@ -406,7 +406,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 	private static function filterUserChoiseSaleBundles( array $products, eZContentObject $coupon ) {
 		$dataMap           = $coupon->attribute( 'data_map' );
-		$allowedSizes      = $dataMap['product_sizes']->attribute( 'content' );
+		$allowedSizes      = isset($dataMap['product_sizes']) ? $dataMap['product_sizes']->attribute( 'content' ) : '';
 		$allowedColours    = $dataMap['product_colours']->attribute( 'content' );
 		$allowSaleProducts = (bool) $dataMap['sale_products']->attribute( 'content' );
 		$type              = $dataMap['discount_type']->attribute( 'content' );
