@@ -4,6 +4,7 @@
 require 'autoload.php';
 
 define("COUPON_CLASS", "discount_coupon");
+define("BATCH_SIZE", 20);
 
 $cli = eZCLI::instance();
 
@@ -44,21 +45,52 @@ $params =
 $expiredCoupons = eZContentObjectTreeNode::subTreeByNodeID($params, $parentNodeId);
 $expiredCouponCount = count($expiredCoupons);
 
-$cli->output("Found $expiredCouponCount expired coupon(s).");
+$cli->output("Found $expiredCouponCount expired coupon(s)...");
 
-/** @var eZContentObjectTreeNode $expiredCouponNode */
-foreach ($expiredCoupons as $expiredCouponNode) {
+$batches = array_chunk($expiredCoupons, BATCH_SIZE);
 
-    if ($expiredCouponNode->classIdentifier() === COUPON_CLASS) {
-        $id = $expiredCouponNode->object()->ID;
-        $nodeId = $expiredCouponNode->NodeID;
-        $dm = $expiredCouponNode->dataMap();
-        $couponExpiryAttribute = $dm['end_date']->content();
-        $couponExpiryDateTime = $couponExpiryAttribute->attribute('timestamp');
-        $cli->output("Coupon: $id. Expired on " . date('Y-m-d', $couponExpiryDateTime) );
+$count = 0;
 
-        eZContentOperationCollection::deleteObject(array($nodeId), false);
+foreach ($batches as $expiredCoupons) {
+
+    $nodeIds = array();
+
+    /** @var eZContentObjectTreeNode $expiredCouponNode */
+    foreach ($expiredCoupons as $expiredCouponNode) {
+
+        $count ++;
+
+        if ($expiredCouponNode->classIdentifier() === COUPON_CLASS) {
+            $id = $expiredCouponNode->object()->ID;
+            $nodeId = $expiredCouponNode->NodeID;
+            $dm = $expiredCouponNode->dataMap();
+            $couponExpiryAttribute = $dm['end_date']->content();
+            $couponExpiryDateTime = $couponExpiryAttribute->attribute('timestamp');
+            $cli->output("Coupon $count: $id. Expired on " . date('Y-m-d', $couponExpiryDateTime) );
+
+            $nodeIds[] = $nodeId;
+        }
     }
+
+    purgeNodeIds($nodeIds, $cli);
+}
+
+
+function purgeNodeIds($nodeIds, $cli) {
+
+    $db = eZDB::instance();
+
+    $db->begin();
+
+    $cli->output("Purging " . count($nodeIds) . " node(s)...");
+    $startTime = time();
+//    eZContentOperationCollection::deleteObject($nodeIds, false);
+    eZContentObjectTreeNode::removeSubtrees( $nodeIds, false );
+    $endTime = time();
+
+    $cli->output($endTime - $startTime . " sec");
+
+    $db->commit();
 }
 
 $script->shutdown( 0 );
