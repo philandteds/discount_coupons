@@ -129,6 +129,11 @@ class eZProductCollectionItem extends eZPersistentObject
 			$discountOrderItem->store();
 		}
 
+		$warrantyAssociation = ptWarrantyAssociation::fetchByProductCollectionItemId($this->attribute('id'));
+		if ($warrantyAssociation) {
+		    ptWarrantyAssociation::create($collectionID, $item->attribute('id'), $warrantyAssociation->attribute('purchased_product_contentobject_id'));
+        }
+
         return $item;
     }
 
