@@ -164,6 +164,7 @@ class DiscountCouponsType extends eZWorkflowEventType
 		$products = self::filterProductsByColour( $products, $coupon );
 		$products = self::filterProductsBySize( $products, $coupon );
 		$products = self::filterUserChoiseSaleBundles( $products, $coupon );
+		$products = self::filterExtendedWarrantyProducts( $products );
 
 		$dataMap     = $coupon->attribute( 'data_map' );
 		$discount    = $dataMap['discount_value']->attribute( 'content' );
@@ -432,6 +433,36 @@ class DiscountCouponsType extends eZWorkflowEventType
 
 		return $filteredProducts;
 	}
+
+    private static function filterExtendedWarrantyProducts( array $products) {
+        // remove all extended warranty products from the $products list
+        $extendedWarrantyProductNodeId = eZINI::instance('shopping.ini')->variable('ExtendedWarranty', 'ExtendedWarrantyProductNodeID');
+
+        if (!$extendedWarrantyProductNodeId) {
+            return $products;
+        }
+
+        $extendedWarrantyProductObject = eZContentObject::fetchByNodeID($extendedWarrantyProductNodeId);
+        $extendedWarrantyProductObjectId = $extendedWarrantyProductObject->attribute('id');
+
+        $filteredProducts = array();
+        foreach( $products as $product ) {
+            // We are filtering only products and passing the rest
+            if( self::isProduct( $product['item_object']->attribute( 'contentobject' ) ) === false ) {
+                $filteredProducts[] = $product;
+                continue;
+            }
+
+            $object  = $product['item_object']->attribute( 'contentobject' );
+            $objectId = $object->attribute('id');
+
+            if ($objectId != $extendedWarrantyProductObjectId) {
+                $filteredProducts[] = $product;
+            }
+        }
+        return $filteredProducts;
+    }
+
 
 	private static function isProduct( eZContentObject $product ) {
 		return $product->attribute( 'class_identifier' ) === 'xrow_product';
